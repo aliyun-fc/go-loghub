@@ -77,14 +77,14 @@ func request(project *LogProject, method, uri string, headers map[string]string,
 	var err error
 	var mockErr *mockErrorRetry
 
-	cctx, cancel := context.WithTimeout(context.Background(), retryTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), retryTimeout)
 	defer cancel()
 
 	// all GET method is read function
 	if method == "GET" {
-		err = RetryWithCondition(cctx, backoff.NewExponentialBackOff(), func() (bool, error) {
+		err = RetryWithCondition(ctx, backoff.NewExponentialBackOff(), func() (bool, error) {
 			if len(mock) == 0 {
-				respHeader, respBody, slsErr = realRequest(project, method, uri, headers, body)
+				respHeader, respBody, slsErr = realRequest(ctx, project, method, uri, headers, body)
 			} else {
 				respHeader, respBody, mockErr = nil, nil, mock[0].(*mockErrorRetry)
 				mockErr.RetryCnt--
@@ -94,13 +94,13 @@ func request(project *LogProject, method, uri string, headers map[string]string,
 				}
 				slsErr = &mockErr.Err
 			}
-			return retryReadErrorCheck(cctx, slsErr)
+			return retryReadErrorCheck(ctx, slsErr)
 		})
 
 	} else {
-		err = RetryWithCondition(cctx, backoff.NewExponentialBackOff(), func() (bool, error) {
+		err = RetryWithCondition(ctx, backoff.NewExponentialBackOff(), func() (bool, error) {
 			if len(mock) == 0 {
-				respHeader, respBody, slsErr = realRequest(project, method, uri, headers, body)
+				respHeader, respBody, slsErr = realRequest(ctx, project, method, uri, headers, body)
 			} else {
 				respHeader, respBody, mockErr = nil, nil, mock[0].(*mockErrorRetry)
 				mockErr.RetryCnt--
@@ -110,7 +110,7 @@ func request(project *LogProject, method, uri string, headers map[string]string,
 				}
 				slsErr = &mockErr.Err
 			}
-			return retryWriteErrorCheck(cctx, slsErr)
+			return retryWriteErrorCheck(ctx, slsErr)
 		})
 	}
 
@@ -122,7 +122,7 @@ func request(project *LogProject, method, uri string, headers map[string]string,
 }
 
 // request sends a request to SLS.
-func realRequest(project *LogProject, method, uri string, headers map[string]string,
+func realRequest(ctx context.Context, project *LogProject, method, uri string, headers map[string]string,
 	body []byte) (http.Header, []byte, error) {
 
 	// The caller should provide 'x-log-bodyrawsize' header
@@ -164,9 +164,9 @@ func realRequest(project *LogProject, method, uri string, headers map[string]str
 	// Handle the endpoint
 	urlStr := fmt.Sprintf("%s%s", project.baseURL, uri)
 	req, err := http.NewRequest(method, urlStr, reader)
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	cctx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
-	req = req.WithContext(ctx)
+	req = req.WithContext(cctx)
 	if err != nil {
 		return nil, nil, NewClientError(err.Error())
 	}
