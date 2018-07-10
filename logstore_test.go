@@ -25,6 +25,7 @@ type LogstoreTestSuite struct {
 	endpoint        string
 	projectName     string
 	logstoreName    string
+	logShipperRole  string
 	accessKeyID     string
 	accessKeySecret string
 	Project         *LogProject
@@ -37,6 +38,7 @@ func (s *LogstoreTestSuite) SetupTest() {
 	s.logstoreName = os.Getenv("LOG_TEST_LOGSTORE")
 	s.accessKeyID = os.Getenv("LOG_TEST_ACCESS_KEY_ID")
 	s.accessKeySecret = os.Getenv("LOG_TEST_ACCESS_KEY_SECRET")
+	s.logShipperRole = os.Getenv("LOG_TEST_SHIPPER_ROLE")
 	slsProject, err := NewLogProject(s.projectName, s.endpoint, s.accessKeyID, s.accessKeySecret)
 	s.Nil(err)
 	s.NotNil(slsProject)
@@ -100,7 +102,6 @@ func (s *LogstoreTestSuite) TestLogStoreNotExist() {
 	s.Require().True(ok)
 	s.Require().Equal(e.Code, "LogStoreNotExist")
 	s.Require().Equal(e.HttpStatus, 404)
-	s.Require().Equal(e.Message, fmt.Sprintf("logstore %s not exist", logstoreName))
 }
 
 func (s *LogstoreTestSuite) TestAccessIDNotExist() {
@@ -381,8 +382,6 @@ func (s *LogstoreTestSuite) TestLogStoreWriteErrorMock() {
 	_, _, err3 := request(s.Logstore.project, "POST", uri, h, out[:n], mockErr)
 	s.Nil(err3)
 
-	// 发生retry，retry几次之后成功了
-	// 这个case太蛋疼...
 	mockErr.Err.Message = "server error 503"
 	mockErr.Err.HttpStatus = 503
 	mockErr.RetryCnt = 3
@@ -424,4 +423,51 @@ func (s *LogstoreTestSuite) TestReqTimeoutRetry() {
 	assert.NotNil(err)
 	assert.Contains(err.Error(), "context deadline exceeded")
 	assert.True(count >= 2, count)
+}
+
+func (s *LogstoreTestSuite) TestLogShipper() {
+	assert := s.Require()
+
+	ossShipperName := "github-test-shipper"
+	// In case shipper exists
+	s.Logstore.DeleteShipper(ossShipperName)
+
+	ossShipperConfig := &OSSShipperConfig{
+		OssBucket:      "testBucket",
+		OssPrefix:      "testPrefix",
+		RoleArn:        s.logShipperRole,
+		BufferInterval: 300,
+		BufferSize:     100,
+		CompressType:   "none",
+		PathFormat:     "%Y/%m/%d/%H/%M",
+	}
+	ossShipper := &Shipper{
+		ShipperName:         ossShipperName,
+		TargetType:          OSSShipperType,
+		TargetConfiguration: ossShipperConfig,
+	}
+	err := s.Logstore.CreateShipper(ossShipper)
+	assert.Nil(err)
+	getShipper, err := s.Logstore.GetShipper(ossShipperName)
+	assert.Nil(err)
+	assert.Equal(ossShipperConfig, getShipper.TargetConfiguration)
+	assert.Equal(ossShipperName, getShipper.ShipperName)
+	assert.Equal(OSSShipperType, getShipper.TargetType)
+
+	ossShipperConfig.OssPrefix = "newPrefix"
+	err = s.Logstore.UpdateShipper(ossShipper)
+	assert.Nil(err)
+	getShipper, err = s.Logstore.GetShipper(ossShipperName)
+	assert.Nil(err)
+	assert.Equal(ossShipperConfig, getShipper.TargetConfiguration)
+	assert.Equal(ossShipperName, getShipper.ShipperName)
+	assert.Equal(OSSShipperType, getShipper.TargetType)
+
+	err = s.Logstore.DeleteShipper(ossShipperName)
+	assert.Nil(err)
+
+	_, err = s.Logstore.GetShipper(ossShipperName)
+	assert.NotNil(err)
+	assert.IsType(new(Error), err)
+	assert.Equal(400, err.(*Error).HttpStatus)
 }
