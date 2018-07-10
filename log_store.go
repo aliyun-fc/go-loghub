@@ -394,3 +394,70 @@ func (s *LogStore) CheckIndexExist() (bool, error) {
 
 	return true, nil
 }
+
+// CreateShipper ...
+func (s *LogStore) CreateShipper(shipper *Shipper) error {
+	body, err := json.Marshal(shipper)
+	if err != nil {
+		return NewClientError(err.Error())
+	}
+
+	h := map[string]string{
+		"x-log-bodyrawsize": fmt.Sprintf("%v", len(body)),
+		"Content-Type":      "application/json",
+		"Accept-Encoding":   "deflate", // TODO: support lz4
+	}
+
+	uri := fmt.Sprintf("/logstores/%s/shipper", s.Name)
+	_, _, err = request(s.project, "POST", uri, h, body)
+
+	return err
+}
+
+// UpdateShipper ...
+func (s *LogStore) UpdateShipper(shipper *Shipper) error {
+	body, err := json.Marshal(shipper)
+	if err != nil {
+		return NewClientError(err.Error())
+	}
+
+	h := map[string]string{
+		"x-log-bodyrawsize": fmt.Sprintf("%v", len(body)),
+		"Content-Type":      "application/json",
+		"Accept-Encoding":   "deflate", // TODO: support lz4
+	}
+
+	uri := fmt.Sprintf("/logstores/%s/shipper/%s", s.Name, shipper.ShipperName)
+	_, _, err = request(s.project, "PUT", uri, h, body)
+
+	return err
+}
+
+// DeleteShipper ...
+func (s *LogStore) DeleteShipper(shipperName string) error {
+	h := map[string]string{
+		"x-log-bodyrawsize": "0",
+	}
+	uri := fmt.Sprintf("/logstores/%s/shipper/%s", s.Name, shipperName)
+	_, _, err := request(s.project, "DELETE", uri, h, nil)
+	return err
+}
+
+// GetShipper ...
+func (s *LogStore) GetShipper(shipperName string) (*Shipper, error) {
+	h := map[string]string{
+		"x-log-bodyrawsize": "0",
+	}
+
+	uri := fmt.Sprintf("/logstores/%s/shipper/%s", s.Name, shipperName)
+	_, buf, err := request(s.project, "GET", uri, h, nil)
+	if err != nil {
+		return nil, err
+	}
+	shipper := &Shipper{}
+	err = json.Unmarshal(buf, shipper)
+	if err != nil {
+		return nil, err
+	}
+	return shipper, nil
+}
