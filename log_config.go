@@ -16,6 +16,7 @@ type InputDetail struct {
 	TopicFormat   string   `json:"topicFormat"`
 	Separator     string   `json:"separator"`
 	AutoExtend    bool     `json:"autoExtend"`
+	EnableRawLog  bool     `json:"enableRawLog"`
 }
 
 // OutputDetail defines output
