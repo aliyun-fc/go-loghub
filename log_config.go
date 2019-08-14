@@ -2,20 +2,21 @@ package sls
 
 // InputDetail defines log_config input
 type InputDetail struct {
-	LogType       string   `json:"logType"`
-	LogPath       string   `json:"logPath"`
-	FilePattern   string   `json:"filePattern"`
-	LocalStorage  bool     `json:"localStorage"`
-	TimeKey       string   `json:"timeKey"`
-	TimeFormat    string   `json:"timeFormat"`
-	LogBeginRegex string   `json:"logBeginRegex"`
-	Regex         string   `json:"regex"`
-	Keys          []string `json:"key"`
-	FilterKeys    []string `json:"filterKey"`
-	FilterRegex   []string `json:"filterRegex"`
-	TopicFormat   string   `json:"topicFormat"`
-	Separator     string   `json:"separator"`
-	AutoExtend    bool     `json:"autoExtend"`
+	LogType        string   `json:"logType"`
+	LogPath        string   `json:"logPath"`
+	FilePattern    string   `json:"filePattern"`
+	LocalStorage   bool     `json:"localStorage"`
+	TimeKey        string   `json:"timeKey"`
+	TimeFormat     string   `json:"timeFormat"`
+	LogBeginRegex  string   `json:"logBeginRegex"`
+	Regex          string   `json:"regex"`
+	Keys           []string `json:"key"`
+	FilterKeys     []string `json:"filterKey"`
+	FilterRegex    []string `json:"filterRegex"`
+	TopicFormat    string   `json:"topicFormat"`
+	Separator      string   `json:"separator"`
+	AutoExtend     bool     `json:"autoExtend"`
+	DiscardUnmatch bool     `json:"discardUnmatch"`
 }
 
 // OutputDetail defines output
